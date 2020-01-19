@@ -1,0 +1,70 @@
+---
+- hosts: all
+  gather_facts: yes
+  become: yes
+  remote_user: pi
+  vars:
+    build_packages:
+      - devscripts
+      - build-essential
+      - git
+      - debhelper
+      - dh-autoreconf
+      - libwww-perl
+      - libtbb-dev
+      - libopencv-dev
+    packages:
+      - sabnzbdplus
+      - python-sabyenc
+      - par2
+
+  tasks:
+
+  - name: Install software-properties-common
+    apt:
+      name: software-properties-common
+
+  - name: Install build_packages
+    apt:
+      name: "{{ build_packages }}"
+
+  - name: Ensure wget is available
+    apt:
+      name: wget
+
+  - name: Add repo key
+    shell: wget https://archive.raspbian.org/raspbian.public.key -O - | sudo apt-key add - && touch raspbian.public.key.success
+    args:
+      creates: raspbian.public.key.success
+
+  - name: Enable repositories
+    copy:
+      dest:  /etc/apt/sources.list
+      content: |
+        deb http://raspbian.raspberrypi.org/raspbian/ buster main contrib non-free rpi
+        deb-src http://raspbian.raspberrypi.org/raspbian/ buster main contrib non-free rpi
+
+  - name: Install packages for sabnzdb
+    apt:
+      name: "{{ packages }}"
+
+  - name: Set sabnzdb user
+    lineinfile:
+      path: /etc/default/sabnzbdplus
+      regexp: "^USER="
+      line: "USER=pi"
+
+  - name: Set sabnzdb user
+    lineinfile:
+      path: /etc/default/sabnzbdplus
+      regexp: "^HOST="
+      line: "HOST=0.0.0.0"
+
+  - name: Setup service sabnzbdplus
+    systemd:
+      state: started
+      daemon_reload: yes
+      name: sabnzbdplus
+      enabled: yes
+
+# Add install for sudo apt-get source -b unrar-nonfree
